@@ -101,19 +101,18 @@ func RemoveTypeFiles(dirs []string, filetypeList []string) []string {
 }
 
 type FileInfoStruct struct {
-	name     string
-	modTime  time.Time
-	filePath string
-
-	reName     string
-	reFilePath string
+	Name       string    `json:"name"`
+	ModTime    time.Time `json:"modTime"`
+	FilePath   string    `json:"filePath"`
+	ReName     string    `json:"reName"`
+	ReFilePath string    `json:"reFilePath"`
 }
 
 // GetFileInfo 获取文件详细信息
 func GetFileInfo(filePath string, filePrefix []string) (FileInfoStruct, bool) {
 	fileInfo, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		fmt.Println("file not exist")
+		fmt.Println(filePath + "文件不存在")
 	}
 
 	isPrefix := false
@@ -126,9 +125,9 @@ func GetFileInfo(filePath string, filePrefix []string) (FileInfoStruct, bool) {
 
 	var fileInfoStruct FileInfoStruct
 	if isPrefix {
-		fileInfoStruct.name = fileInfo.Name()
-		fileInfoStruct.modTime = fileInfo.ModTime()
-		fileInfoStruct.filePath = filePath
+		fileInfoStruct.Name = fileInfo.Name()
+		fileInfoStruct.ModTime = fileInfo.ModTime()
+		fileInfoStruct.FilePath = filePath
 	}
 	return fileInfoStruct, isPrefix
 }
@@ -150,14 +149,13 @@ func ReviseFileInfo(fileInfoStructList []FileInfoStruct, isCreateFolderFlag bool
 	var fileInfoStructListNew []FileInfoStruct
 	if isCreateFolderFlag {
 		for _, fileInfoStruct := range fileInfoStructList {
-			ext := filepath.Ext(fileInfoStruct.name)
-			reName := fileInfoStruct.modTime.Format(fileLayout) + ext
-			reFilePath := outFilePath + "/" + fileInfoStruct.modTime.Format(folderLayout) + "/"
+			ext := filepath.Ext(fileInfoStruct.Name)
+			reName := fileInfoStruct.ModTime.Format(fileLayout) + ext
+			reFilePath := outFilePath + "/" + fileInfoStruct.ModTime.Format(folderLayout) + "/"
 
-			fileInfoStruct.reName = reName
-			fileInfoStruct.reFilePath = reFilePath
+			fileInfoStruct.ReName = reName
+			fileInfoStruct.ReFilePath = reFilePath
 			fileInfoStructListNew = append(fileInfoStructListNew, fileInfoStruct)
-			//fmt.Println(reFilePath)
 		}
 	}
 	return fileInfoStructListNew
@@ -167,7 +165,6 @@ func ReviseFileInfo(fileInfoStructList []FileInfoStruct, isCreateFolderFlag bool
 func CreateFolder(destinationPath string) {
 	// 创建目标文件夹
 	destinationFolder := filepath.Dir(destinationPath)
-	fmt.Println(destinationFolder)
 	err := os.MkdirAll(destinationFolder, os.ModePerm)
 	if err != nil {
 		fmt.Println("创建目标文件夹失败:", err)
@@ -177,9 +174,8 @@ func CreateFolder(destinationPath string) {
 // ProcessFile 真正的对文件进行处理
 func ProcessFile(fileInfoStructList []FileInfoStruct) {
 	for _, fileInfoStruct := range fileInfoStructList {
-		fmt.Println(fileInfoStruct.reFilePath)
-		CreateFolder(fileInfoStruct.reFilePath)
-		err := os.Rename(fileInfoStruct.filePath, fileInfoStruct.reFilePath+fileInfoStruct.reName)
+		CreateFolder(fileInfoStruct.ReFilePath)
+		err := os.Rename(fileInfoStruct.FilePath, fileInfoStruct.ReFilePath+fileInfoStruct.ReName)
 		if err != nil {
 			fmt.Println("移动文件失败:", err)
 		}
@@ -222,8 +218,24 @@ func ParseConfig() ConfigData {
 		log.Fatal("解析 JSON 数据失败:", err)
 	}
 
-	fmt.Println(data)
 	return data
+}
+
+// ExportJson 写出json
+func ExportJson(fileInfo []FileInfoStruct) bool {
+	// 将结构体转换为 JSON 字符串
+	jsonData, err := json.MarshalIndent(fileInfo, "", "	")
+	if err != nil {
+		log.Fatal("转换为 JSON 失败:", err)
+	}
+	timeString := time.Now().Format("2006-01-02_15-04-05")
+	// 将 JSON 数据写入文件
+	err = os.WriteFile(timeString+"_output.json", jsonData, 0644)
+	if err != nil {
+		log.Fatal("写入文件失败:", err)
+		return false
+	}
+	return true
 }
 
 func main() {
@@ -242,5 +254,8 @@ func main() {
 
 	fileInfoStructListNew := ReviseFileInfo(fileInfoStructList, config.IsCreateFolderFlag, config.FolderLayout, config.OutFilePath, config.FileLayout)
 
-	ProcessFile(fileInfoStructListNew)
+	// 只有json 写入成功才能对文件进行操作
+	if ExportJson(fileInfoStructListNew) {
+		ProcessFile(fileInfoStructListNew)
+	}
 }
