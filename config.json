@@ -1,0 +1,11 @@
+{
+    "path" : ".",
+    "isRecursive": false,
+    "prefixes" :["GX","GF"],
+    "removeFileType" : [".mp4", ".mp3"],
+    "deleteFileType" : [".thm"],
+    "isCreateFolderFlag" : true,
+    "folderLayout" : "2006-01-02",
+    "fileLayout" : "测试_15_04_05",
+    "outFilePath" : "."
+}
